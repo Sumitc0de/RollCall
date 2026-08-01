@@ -18,6 +18,7 @@ import { useAttendance } from '../context/AttendanceContext';
 import { exportAllDataToJson, getDb, resetDatabase, runMigrations, subjectRepository } from '../db';
 import type { SubjectSummary } from '../types';
 import { Screen } from '../components/Screen';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { fonts, layout } from '../theme';
 
 export function ProfileScreen({ navigation }: any) {
@@ -28,6 +29,7 @@ export function ProfileScreen({ navigation }: any) {
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
   const [exporting, setExporting] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [clearModalVisible, setClearModalVisible] = useState(false);
 
   useEffect(() => {
     setInputName(userName);
@@ -82,6 +84,7 @@ export function ProfileScreen({ navigation }: any) {
   };
 
   const clearData = async () => {
+    setClearModalVisible(false);
     setClearing(true);
     try {
       await resetDatabase();
@@ -98,14 +101,7 @@ export function ProfileScreen({ navigation }: any) {
   };
 
   const handleClearData = () => {
-    Alert.alert(
-      'Clear all app data?',
-      'This permanently removes all subjects, schedules, attendance records, and settings from this device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear data', style: 'destructive', onPress: () => void clearData() },
-      ]
-    );
+    setClearModalVisible(true);
   };
 
   const totalPresent = subjects.reduce((sum, s) => sum + s.present, 0);
@@ -291,13 +287,27 @@ export function ProfileScreen({ navigation }: any) {
           </View>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={clearModalVisible}
+        title="Clear All App Data?"
+        message="This permanently removes all subjects, schedules, attendance records, and settings from this device."
+        icon="trash"
+        iconColor="#EF4444"
+        iconBg="#FEF2F2"
+        confirmText="Clear Data"
+        cancelText="Cancel"
+        confirmTone="danger"
+        onConfirm={() => void clearData()}
+        onCancel={() => setClearModalVisible(false)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   container: {
     padding: 20,

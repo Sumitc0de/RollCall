@@ -1,12 +1,27 @@
 import type { PropsWithChildren } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { SafeAreaView, NativeSafeAreaViewProps } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 
-export function Screen({ children, keyboard = false, style }: PropsWithChildren<{ keyboard?: boolean; style?: any }>) {
-  const content = <SafeAreaView edges={[]} style={[styles.safe, style]}>{children}</SafeAreaView>;
+interface ScreenProps extends PropsWithChildren {
+  keyboard?: boolean;
+  style?: any;
+  edges?: NativeSafeAreaViewProps['edges'];
+}
+
+export function Screen({ children, keyboard = false, style, edges = ['top', 'left', 'right'] }: ScreenProps) {
+  const content = (
+    <SafeAreaView edges={edges} style={[styles.safe, style]}>
+      {children}
+    </SafeAreaView>
+  );
+
   return keyboard ? (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       {content}
     </KeyboardAvoidingView>
   ) : (
@@ -15,6 +30,7 @@ export function Screen({ children, keyboard = false, style }: PropsWithChildren<
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.background },
   safe: { flex: 1, backgroundColor: colors.background },
 });
+

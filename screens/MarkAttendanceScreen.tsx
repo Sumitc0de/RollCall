@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
-  SafeAreaView,
-  StatusBar as RNStatusBar
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +28,7 @@ type OverallStats = {
 };
 
 export function MarkAttendanceScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { refresh, refreshKey } = useAttendance();
   const { track } = useAnalytics();
@@ -90,7 +91,7 @@ export function MarkAttendanceScreen({ navigation }: any) {
     ? records.filter((r) => r.date === selectedDateFilter)
     : records;
 
-  const renderListHeader = () => (
+  const renderListHeader = useCallback(() => (
     <View style={styles.headerWrapper}>
       <View style={styles.statsCard}>
         <View style={styles.statColumn}>
@@ -124,9 +125,9 @@ export function MarkAttendanceScreen({ navigation }: any) {
         </View>
       )}
     </View>
-  );
+  ), [selectedDateFilter, stats]);
 
-  const renderListFooter = () => (
+  const renderListFooter = useCallback(() => (
     <View style={styles.instructionBanner}>
       <View style={styles.instructionIconBox}>
         <Ionicons name="calendar-outline" size={24} color="#6366F1" />
@@ -136,12 +137,154 @@ export function MarkAttendanceScreen({ navigation }: any) {
         <Text style={styles.instructionSub}>Mark your attendance for each lecture</Text>
       </View>
     </View>
-  );
+  ), []);
+
+  const renderItem = useCallback(({ item, index }: { item: LectureRecord; index: number }) => {
+    const showDateHeader = index === 0 || filteredRecords[index - 1].date !== item.date;
+
+    const dateObj = parseISO(item.date);
+    const dayOfWeek = format(dateObj, 'EEE').toUpperCase();
+    const dayNum = format(dateObj, 'dd');
+    const month = format(dateObj, 'MMM').toUpperCase();
+    const fullDateHeader = format(dateObj, 'EEEE, dd MMM');
+
+    return (
+      <View style={styles.cardContainer}>
+        {showDateHeader && (
+          <View style={styles.groupHeader}>
+            <Text style={styles.groupDateText}>{fullDateHeader}</Text>
+            <Pressable
+              onPress={() => markAllLecturesPresent(item.date)}
+              style={styles.markAllBtn}
+              accessibilityRole="button"
+              accessibilityLabel={`Mark all present for ${fullDateHeader}`}
+            >
+              <Ionicons name="checkmark-done" size={15} color="#4F46E5" style={{ marginRight: 4 }} />
+              <Text style={styles.markAllText}>Mark all present</Text>
+            </Pressable>
+          </View>
+        )}
+
+        <View style={styles.lectureCard}>
+          <View style={styles.cardTopRow}>
+            <View style={styles.dateBox}>
+              <Text style={styles.dateBoxDay}>{dayOfWeek}</Text>
+              <Text style={styles.dateBoxNum}>{dayNum}</Text>
+              <Text style={styles.dateBoxMonth}>{month}</Text>
+            </View>
+
+            <View style={styles.subjectWrapper}>
+              <Text style={styles.subjectName} numberOfLines={1}>
+                {item.subject_name}
+              </Text>
+              <Text style={styles.lectureSubtext}>Lecture</Text>
+            </View>
+
+            <Pressable
+              onPress={() => setSelectedLectureForMenu(item)}
+              style={styles.moreMenuBtn}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={`Options for ${item.subject_name}`}
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color="#94A3B8" />
+            </Pressable>
+          </View>
+
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.presentBtn,
+                item.status === 'present' && styles.presentActive,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={() => mark(item.id, 'present')}
+              accessibilityRole="button"
+              accessibilityLabel={`Mark present for ${item.subject_name}`}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={item.status === 'present' ? '#FFFFFF' : '#16A34A'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  styles.presentText,
+                  item.status === 'present' && styles.textActive,
+                ]}
+              >
+                Present
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.absentBtn,
+                item.status === 'absent' && styles.absentActive,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={() => mark(item.id, 'absent')}
+              accessibilityRole="button"
+              accessibilityLabel={`Mark absent for ${item.subject_name}`}
+            >
+              <Ionicons
+                name="close-circle"
+                size={16}
+                color={item.status === 'absent' ? '#FFFFFF' : '#EF4444'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  styles.absentText,
+                  item.status === 'absent' && styles.textActive,
+                ]}
+              >
+                Absent
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.holidayBtn,
+                item.status === 'cancelled' && styles.holidayActive,
+                pressed && styles.btnPressed,
+              ]}
+              onPress={() => mark(item.id, 'cancelled')}
+              accessibilityRole="button"
+              accessibilityLabel={`Mark holiday for ${item.subject_name}`}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color={item.status === 'cancelled' ? '#FFFFFF' : '#6366F1'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  styles.holidayText,
+                  item.status === 'cancelled' && styles.textActive,
+                ]}
+              >
+                Holiday
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }, [filteredRecords]);
 
   return (
-    <Screen>
+    <Screen edges={['left', 'right']}>
       <View style={styles.screenWrapper}>
-        <View style={styles.customHeader}>
+        <View style={[styles.customHeader, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
           <Pressable
             onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Today')}
             style={styles.headerIconBtn}
@@ -169,7 +312,7 @@ export function MarkAttendanceScreen({ navigation }: any) {
             mode="date"
             onValueChange={(_, date) => {
               setDatePickerVisible(false);
-              setSelectedDateFilter(format(date, 'yyyy-MM-dd'));
+              if (date) setSelectedDateFilter(format(date, 'yyyy-MM-dd'));
             }}
             onDismiss={() => setDatePickerVisible(false)}
             onError={() => setDatePickerVisible(false)}
@@ -180,6 +323,10 @@ export function MarkAttendanceScreen({ navigation }: any) {
           style={[styles.listView, width >= layout.maxContentWidth && styles.wideList]}
           data={filteredRecords}
           keyExtractor={(r) => r.id}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={renderListHeader}
@@ -202,142 +349,7 @@ export function MarkAttendanceScreen({ navigation }: any) {
               )}
             </View>
           }
-          renderItem={({ item, index }) => {
-            const showDateHeader =
-              index === 0 || filteredRecords[index - 1].date !== item.date;
-
-            const dateObj = parseISO(item.date);
-            const dayOfWeek = format(dateObj, 'EEE').toUpperCase();
-            const dayNum = format(dateObj, 'dd');
-            const month = format(dateObj, 'MMM').toUpperCase();
-            const fullDateHeader = format(dateObj, 'EEEE, dd MMM');
-
-            return (
-              <View style={styles.cardContainer}>
-                {showDateHeader && (
-                  <View style={styles.groupHeader}>
-                    <Text style={styles.groupDateText}>{fullDateHeader}</Text>
-                    <Pressable
-                      onPress={() => markAllLecturesPresent(item.date)}
-                      style={styles.markAllBtn}
-                      accessibilityRole="button"
-                    >
-                      <Ionicons name="checkmark-done" size={15} color="#4F46E5" style={{ marginRight: 4 }} />
-                      <Text style={styles.markAllText}>Mark all present</Text>
-                    </Pressable>
-                  </View>
-                )}
-
-                <View style={styles.lectureCard}>
-                  <View style={styles.cardTopRow}>
-                    <View style={styles.dateBox}>
-                      <Text style={styles.dateBoxDay}>{dayOfWeek}</Text>
-                      <Text style={styles.dateBoxNum}>{dayNum}</Text>
-                      <Text style={styles.dateBoxMonth}>{month}</Text>
-                    </View>
-
-                    <View style={styles.subjectWrapper}>
-                      <Text style={styles.subjectName} numberOfLines={1}>
-                        {item.subject_name}
-                      </Text>
-                      <Text style={styles.lectureSubtext}>Lecture</Text>
-                    </View>
-
-                    <Pressable
-                      onPress={() => setSelectedLectureForMenu(item)}
-                      style={styles.moreMenuBtn}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="ellipsis-horizontal" size={18} color="#94A3B8" />
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.actionsRow}>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.actionBtn,
-                        styles.presentBtn,
-                        item.status === 'present' && styles.presentActive,
-                        pressed && styles.btnPressed,
-                      ]}
-                      onPress={() => mark(item.id, 'present')}
-                      accessibilityRole="button"
-                    >
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={16}
-                        color={item.status === 'present' ? '#FFFFFF' : '#16A34A'}
-                        style={{ marginRight: 5 }}
-                      />
-                      <Text
-                        style={[
-                          styles.actionBtnText,
-                          styles.presentText,
-                          item.status === 'present' && styles.textActive,
-                        ]}
-                      >
-                        Present
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.actionBtn,
-                        styles.absentBtn,
-                        item.status === 'absent' && styles.absentActive,
-                        pressed && styles.btnPressed,
-                      ]}
-                      onPress={() => mark(item.id, 'absent')}
-                      accessibilityRole="button"
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={16}
-                        color={item.status === 'absent' ? '#FFFFFF' : '#EF4444'}
-                        style={{ marginRight: 5 }}
-                      />
-                      <Text
-                        style={[
-                          styles.actionBtnText,
-                          styles.absentText,
-                          item.status === 'absent' && styles.textActive,
-                        ]}
-                      >
-                        Absent
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.actionBtn,
-                        styles.holidayBtn,
-                        item.status === 'cancelled' && styles.holidayActive,
-                        pressed && styles.btnPressed,
-                      ]}
-                      onPress={() => mark(item.id, 'cancelled')}
-                      accessibilityRole="button"
-                    >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={16}
-                        color={item.status === 'cancelled' ? '#FFFFFF' : '#6366F1'}
-                        style={{ marginRight: 5 }}
-                      />
-                      <Text
-                        style={[
-                          styles.actionBtnText,
-                          styles.holidayText,
-                          item.status === 'cancelled' && styles.textActive,
-                        ]}
-                      >
-                        Holiday
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            );
-          }}
+          renderItem={renderItem}
         />
 
         <Modal
@@ -347,7 +359,7 @@ export function MarkAttendanceScreen({ navigation }: any) {
           onRequestClose={() => setSelectedLectureForMenu(null)}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setSelectedLectureForMenu(null)}>
-            <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Pressable style={styles.modalContent} onPress={() => { }}>
               <Text style={styles.modalTitle}>Lecture Options</Text>
               {selectedLectureForMenu && (
                 <Text style={styles.modalSub}>
@@ -421,7 +433,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: RNStatusBar.currentHeight ? RNStatusBar.currentHeight + 8 : 12,
+    paddingTop: 12,
     paddingBottom: 12,
     backgroundColor: '#F8FAFC',
   },
@@ -452,7 +464,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   headerWrapper: {
     marginBottom: 12,

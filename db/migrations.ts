@@ -3,12 +3,12 @@ import { CREATE_TABLES_SQL, CURRENT_SCHEMA_VERSION } from './schema';
 
 async function ensureRequiredColumns(db: SQLiteDatabase): Promise<void> {
   const subjectCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(subjects);');
-  if (!subjectCols.some((column) => column.name === 'is_deleted')) {
+  if (subjectCols.length > 0 && !subjectCols.some((column) => column.name === 'is_deleted')) {
     await db.execAsync('ALTER TABLE subjects ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;');
   }
 
   const recordCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(lecture_records);');
-  if (!recordCols.some((column) => column.name === 'updated_at')) {
+  if (recordCols.length > 0 && !recordCols.some((column) => column.name === 'updated_at')) {
     await db.execAsync("ALTER TABLE lecture_records ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';");
     await db.execAsync("UPDATE lecture_records SET updated_at = created_at WHERE updated_at = '';");
   }

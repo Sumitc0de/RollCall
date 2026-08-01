@@ -1,15 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
-  StatusBar as RNStatusBar
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { format, parseISO } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +19,14 @@ import { subjectRepository, lectureRecordRepository } from '../db';
 import type { Attendance, LectureRecord, LectureStatus, Subject } from '../types';
 import { classesNeededToRecover, safeSkips } from '../utils/attendanceMath';
 import { Screen } from '../components/Screen';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { fonts, layout } from '../theme';
 import { useAnalytics } from '../analytics/track';
 
 type FilterType = 'all' | 'present' | 'absent' | 'cancelled' | 'unmarked';
 
 export function SubjectDetailScreen({ navigation, route }: any) {
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const id = route.params.subjectId;
   const { refresh, refreshKey } = useAttendance();
@@ -37,6 +40,7 @@ export function SubjectDetailScreen({ navigation, route }: any) {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<LectureRecord | null>(null);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   const load = useCallback(async () => {
     const [s, a, h] = await Promise.all([
@@ -63,27 +67,18 @@ export function SubjectDetailScreen({ navigation, route }: any) {
     track('subject_detail_viewed');
   }, [track]);
 
-  if (!subject) return null;
-
-  const removeSubject = () => {
+  const removeSubject = useCallback(() => {
+    if (!subject) return;
     setSettingsModalVisible(false);
-    Alert.alert(
-      'Delete Subject?',
-      `This will remove ${subject.name} from your active subjects. This action can be reversed by restoring database if needed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await subjectRepository.softDelete(id);
-            track('subject_deleted');
-            await refresh();
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+    setDeleteModalVisible(true);
+  }, [subject]);
+
+  const confirmDeleteSubject = async () => {
+    setDeleteModalVisible(false);
+    await subjectRepository.softDelete(id);
+    track('subject_deleted');
+    await refresh();
+    navigation.goBack();
   };
 
   const handleUpdateRecordStatus = async (status: LectureStatus) => {
@@ -95,130 +90,236 @@ export function SubjectDetailScreen({ navigation, route }: any) {
     await load();
   };
 
-  const above = attendance.percent !== null && attendance.percent >= subject.target_percent;
+  const above = attendance.percent !== null && subject ? attendance.percent >= subject.target_percent : false;
   const absentCount = history.filter((r) => r.status === 'absent').length;
 
-  const filteredHistory = history.filter((r) => {
-    if (filter === 'all') return true;
-    return r.status === filter;
-  });
+  const filteredHistory = useMemo(() => {
+    return history.filter((r) => {
+      if (filter === 'all') return true;
+      return r.status === filter;
+    });
+  }, [filter, history]);
 
-  const skipsCount = attendance.percent !== null ? safeSkips(attendance.present, attendance.total, subject.target_percent) : 0;
-  const recoverCount = attendance.percent !== null ? classesNeededToRecover(attendance.present, attendance.total, subject.target_percent) : 0;
+  const skipsCount = attendance.percent !== null && subject ? safeSkips(attendance.present, attendance.total, subject.target_percent) : 0;
+  const recoverCount = attendance.percent !== null && subject ? classesNeededToRecover(attendance.present, attendance.total, subject.target_percent) : 0;
 
-  const adviceText =
-    attendance.percent === null
-      ? 'Mark your first lecture to start tracking insights.'
-      : above
-      ? `Safe to skip ${skipsCount} more class(es) and still maintain ${subject.target_percent}%.`
-      : `Attend the next ${recoverCount} class(es) to recover target ${subject.target_percent}%.`;
+  const adviceText = useMemo(() => {
+    if (!subject) return '';
+    if (attendance.percent === null) return 'Mark your first lecture to start tracking insights.';
+    if (above) return `Safe to skip ${skipsCount} more class(es) and still maintain ${subject.target_percent}%.`;
+    return `Attend the next ${recoverCount} class(es) to recover target ${subject.target_percent}%.`;
+  }, [above, attendance.percent, recoverCount, skipsCount, subject]);
 
-  const renderListHeader = () => (
-    <View style={styles.headerContainer}>
-      <View style={styles.heroCard}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="book-outline" size={24} color="#6366F1" />
+  const renderListHeader = useCallback(() => {
+    if (!subject) return null;
+    return (
+      <View style={styles.headerContainer}>
+        <View style={styles.heroCard}>
+          <View style={styles.cardHeaderRow}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="book-outline" size={24} color="#6366F1" />
+            </View>
+            <View style={styles.titleContainer}>
+              <Text style={styles.subjectName} numberOfLines={1}>
+                {subject.name}
+              </Text>
+              <Text style={styles.heldLectures}>{attendance.total} Held Lectures</Text>
+            </View>
+            <View style={styles.targetBadge}>
+              <Text style={styles.targetText}>TARGET {subject.target_percent}%</Text>
+            </View>
           </View>
-          <View style={styles.titleContainer}>
-            <Text style={styles.subjectName} numberOfLines={1}>
-              {subject.name}
-            </Text>
-            <Text style={styles.heldLectures}>{attendance.total} Held Lectures</Text>
+
+          <View style={styles.statsRow}>
+            <DonutGauge percent={attendance.percent} above={above} />
+
+            <View style={styles.legendContainer}>
+              <View style={styles.legendRow}>
+                <View style={[styles.bulletDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={[styles.legendValue, { color: '#16A34A' }]}>{attendance.present}</Text>
+                <Text style={styles.legendLabel}>Present</Text>
+              </View>
+
+              <View style={styles.legendRow}>
+                <View style={[styles.bulletDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={[styles.legendValue, { color: '#DC2626' }]}>{absentCount}</Text>
+                <Text style={styles.legendLabel}>Absent</Text>
+              </View>
+
+              <View style={styles.legendRow}>
+                <View style={[styles.bulletDot, { backgroundColor: '#94A3B8' }]} />
+                <Text style={[styles.legendValue, { color: '#334155' }]}>{attendance.total}</Text>
+                <Text style={styles.legendLabel}>Total Lectures</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.targetBadge}>
-            <Text style={styles.targetText}>TARGET {subject.target_percent}%</Text>
+
+          <View style={[styles.adviceBox, above ? styles.adviceSuccess : styles.adviceWarning]}>
+            <Ionicons
+              name={above ? 'checkmark-circle' : 'alert-circle'}
+              size={22}
+              color={above ? '#22C55E' : '#EF4444'}
+              style={styles.adviceIcon}
+            />
+            <View style={styles.adviceTextWrapper}>
+              <Text style={[styles.adviceTitle, above ? styles.adviceTitleSuccess : styles.adviceTitleWarning]}>
+                {above ? "Great! You're above the target 🎉" : 'Attention! Below Target ⚠️'}
+              </Text>
+              <Text style={[styles.adviceSubtext, above ? styles.adviceSubtextSuccess : styles.adviceSubtextWarning]}>
+                {adviceText}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <DonutGauge percent={attendance.percent} above={above} />
+        <View style={styles.toolsRow}>
+          <Pressable
+            style={styles.editBtn}
+            onPress={() => navigation.navigate('Add', { subjectId: id })}
+            accessibilityRole="button"
+            accessibilityLabel="Edit subject"
+          >
+            <Ionicons name="pencil" size={18} color="#6366F1" style={{ marginRight: 8 }} />
+            <Text style={styles.editBtnText}>Edit Subject</Text>
+          </Pressable>
 
-          <View style={styles.legendContainer}>
-            <View style={styles.legendRow}>
-              <View style={[styles.bulletDot, { backgroundColor: '#22C55E' }]} />
-              <Text style={[styles.legendValue, { color: '#16A34A' }]}>{attendance.present}</Text>
-              <Text style={styles.legendLabel}>Present</Text>
-            </View>
+          <Pressable
+            style={styles.deleteBtn}
+            onPress={removeSubject}
+            accessibilityRole="button"
+            accessibilityLabel="Delete subject"
+          >
+            <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+            <Text style={styles.deleteBtnText}>Delete Subject</Text>
+          </Pressable>
+        </View>
 
-            <View style={styles.legendRow}>
-              <View style={[styles.bulletDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={[styles.legendValue, { color: '#DC2626' }]}>{absentCount}</Text>
-              <Text style={styles.legendLabel}>Absent</Text>
-            </View>
+        <View style={styles.historyHeaderRow}>
+          <Text style={styles.sectionTitle}>Lecture History</Text>
 
-            <View style={styles.legendRow}>
-              <View style={[styles.bulletDot, { backgroundColor: '#94A3B8' }]} />
-              <Text style={[styles.legendValue, { color: '#334155' }]}>{attendance.total}</Text>
-              <Text style={styles.legendLabel}>Total Lectures</Text>
-            </View>
+          <Pressable
+            style={styles.filterPill}
+            onPress={() => setFilterModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filter history"
+          >
+            <Ionicons name="filter-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
+            <Text style={styles.filterPillText}>
+              {filter === 'all'
+                ? 'All Lectures'
+                : filter === 'present'
+                  ? 'Present'
+                  : filter === 'absent'
+                    ? 'Absent'
+                    : filter === 'cancelled'
+                      ? 'Cancelled'
+                      : 'Unmarked'}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color="#64748B" style={{ marginLeft: 4 }} />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }, [above, absentCount, adviceText, attendance.percent, attendance.present, attendance.total, filter, id, navigation, removeSubject, subject]);
+
+  const renderItem = useCallback(({ item }: { item: LectureRecord }) => {
+    const lectureNum = history.length - history.findIndex((h) => h.id === item.id);
+    const dateObj = parseISO(item.date);
+    const dayOfWeek = format(dateObj, 'EEE').toUpperCase();
+    const dayNum = format(dateObj, 'dd');
+    const month = format(dateObj, 'MMM').toUpperCase();
+    const fullDate = format(dateObj, 'EEE, dd MMM yyyy');
+
+    return (
+      <Pressable
+        onPress={() => setSelectedRecord(item)}
+        style={({ pressed }) => [styles.recordCard, pressed && styles.cardPressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Edit ${item.status} lecture on ${fullDate}`}
+      >
+        <View style={styles.dateBox}>
+          <Text style={styles.dateBoxDay}>{dayOfWeek}</Text>
+          <Text style={styles.dateBoxNum}>{dayNum}</Text>
+          <Text style={styles.dateBoxMonth}>{month}</Text>
+        </View>
+
+        <View style={styles.recordMainInfo}>
+          <Text style={styles.recordFullDate}>{fullDate}</Text>
+          <View style={styles.lectureRow}>
+            <Ionicons name="time-outline" size={13} color="#94A3B8" style={{ marginRight: 4 }} />
+            <Text style={styles.lectureNumText}>Lecture {lectureNum}</Text>
           </View>
         </View>
 
-        <View style={[styles.adviceBox, above ? styles.adviceSuccess : styles.adviceWarning]}>
-          <Ionicons
-            name={above ? 'checkmark-circle' : 'alert-circle'}
-            size={22}
-            color={above ? '#22C55E' : '#EF4444'}
-            style={styles.adviceIcon}
-          />
-          <View style={styles.adviceTextWrapper}>
-            <Text style={[styles.adviceTitle, above ? styles.adviceTitleSuccess : styles.adviceTitleWarning]}>
-              {above ? "Great! You're above the target 🎉" : 'Attention! Below Target ⚠️'}
-            </Text>
-            <Text style={[styles.adviceSubtext, above ? styles.adviceSubtextSuccess : styles.adviceSubtextWarning]}>
-              {adviceText}
+        <View style={styles.rightStatusWrapper}>
+          <View
+            style={[
+              styles.statusPill,
+              item.status === 'present'
+                ? styles.pillPresent
+                : item.status === 'absent'
+                  ? styles.pillAbsent
+                  : item.status === 'cancelled'
+                    ? styles.pillCancelled
+                    : styles.pillUnmarked,
+            ]}
+          >
+            <Ionicons
+              name={
+                item.status === 'present'
+                  ? 'checkmark-circle'
+                  : item.status === 'absent'
+                    ? 'close-circle'
+                    : item.status === 'cancelled'
+                      ? 'remove-circle'
+                      : 'help-circle'
+              }
+              size={14}
+              color={
+                item.status === 'present'
+                  ? '#16A34A'
+                  : item.status === 'absent'
+                    ? '#EF4444'
+                    : item.status === 'cancelled'
+                      ? '#64748B'
+                      : '#D97706'
+              }
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[
+                styles.statusPillText,
+                item.status === 'present'
+                  ? styles.statusTextPresent
+                  : item.status === 'absent'
+                    ? styles.statusTextAbsent
+                    : item.status === 'cancelled'
+                      ? styles.statusTextCancelled
+                      : styles.statusTextUnmarked,
+              ]}
+            >
+              {item.status === 'present'
+                ? 'Present'
+                : item.status === 'absent'
+                  ? 'Absent'
+                  : item.status === 'cancelled'
+                    ? 'Holiday'
+                    : 'Unmarked'}
             </Text>
           </View>
+
+          <Ionicons name="chevron-forward" size={18} color="#CBD5E1" style={{ marginLeft: 6 }} />
         </View>
-      </View>
+      </Pressable>
+    );
+  }, [history]);
 
-      <View style={styles.toolsRow}>
-        <Pressable
-          style={styles.editBtn}
-          onPress={() => navigation.navigate('Add', { subjectId: id })}
-          accessibilityRole="button"
-        >
-          <Ionicons name="pencil" size={18} color="#6366F1" style={{ marginRight: 8 }} />
-          <Text style={styles.editBtnText}>Edit Subject</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.deleteBtn}
-          onPress={removeSubject}
-          accessibilityRole="button"
-        >
-          <Ionicons name="trash-outline" size={18} color="#EF4444" style={{ marginRight: 8 }} />
-          <Text style={styles.deleteBtnText}>Delete Subject</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.historyHeaderRow}>
-        <Text style={styles.sectionTitle}>Lecture History</Text>
-
-        <Pressable style={styles.filterPill} onPress={() => setFilterModalVisible(true)}>
-          <Ionicons name="filter-outline" size={14} color="#64748B" style={{ marginRight: 6 }} />
-          <Text style={styles.filterPillText}>
-            {filter === 'all'
-              ? 'All Lectures'
-              : filter === 'present'
-              ? 'Present'
-              : filter === 'absent'
-              ? 'Absent'
-              : filter === 'cancelled'
-              ? 'Cancelled'
-              : 'Unmarked'}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color="#64748B" style={{ marginLeft: 4 }} />
-        </Pressable>
-      </View>
-    </View>
-  );
+  if (!subject) return null;
 
   return (
-    <Screen>
+    <Screen edges={['left', 'right']}>
       <View style={styles.screenWrapper}>
-        <View style={styles.customHeader}>
+        <View style={[styles.customHeader, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
           <Pressable
             onPress={() => navigation.goBack()}
             style={styles.backBtn}
@@ -246,6 +347,10 @@ export function SubjectDetailScreen({ navigation, route }: any) {
           style={[styles.listView, width >= layout.maxContentWidth && styles.wideList]}
           data={filteredHistory}
           keyExtractor={(r) => r.id}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={renderListHeader}
@@ -259,97 +364,7 @@ export function SubjectDetailScreen({ navigation, route }: any) {
               </Text>
             </View>
           }
-          renderItem={({ item }) => {
-            const lectureNum = history.length - history.findIndex((h) => h.id === item.id);
-            const dateObj = parseISO(item.date);
-            const dayOfWeek = format(dateObj, 'EEE').toUpperCase();
-            const dayNum = format(dateObj, 'dd');
-            const month = format(dateObj, 'MMM').toUpperCase();
-            const fullDate = format(dateObj, 'EEE, dd MMM yyyy');
-
-            return (
-              <Pressable
-                onPress={() => setSelectedRecord(item)}
-                style={({ pressed }) => [styles.recordCard, pressed && styles.cardPressed]}
-                accessibilityRole="button"
-                accessibilityLabel={`Edit ${item.status} lecture on ${fullDate}`}
-              >
-                <View style={styles.dateBox}>
-                  <Text style={styles.dateBoxDay}>{dayOfWeek}</Text>
-                  <Text style={styles.dateBoxNum}>{dayNum}</Text>
-                  <Text style={styles.dateBoxMonth}>{month}</Text>
-                </View>
-
-                <View style={styles.recordMainInfo}>
-                  <Text style={styles.recordFullDate}>{fullDate}</Text>
-                  <View style={styles.lectureRow}>
-                    <Ionicons name="time-outline" size={13} color="#94A3B8" style={{ marginRight: 4 }} />
-                    <Text style={styles.lectureNumText}>Lecture {lectureNum}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.rightStatusWrapper}>
-                  <View
-                    style={[
-                      styles.statusPill,
-                      item.status === 'present'
-                        ? styles.pillPresent
-                        : item.status === 'absent'
-                        ? styles.pillAbsent
-                        : item.status === 'cancelled'
-                        ? styles.pillCancelled
-                        : styles.pillUnmarked,
-                    ]}
-                  >
-                    <Ionicons
-                      name={
-                        item.status === 'present'
-                          ? 'checkmark-circle'
-                          : item.status === 'absent'
-                          ? 'close-circle'
-                          : item.status === 'cancelled'
-                          ? 'remove-circle'
-                          : 'help-circle'
-                      }
-                      size={14}
-                      color={
-                        item.status === 'present'
-                          ? '#16A34A'
-                          : item.status === 'absent'
-                          ? '#EF4444'
-                          : item.status === 'cancelled'
-                          ? '#64748B'
-                          : '#D97706'
-                      }
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text
-                      style={[
-                        styles.statusPillText,
-                        item.status === 'present'
-                          ? styles.statusTextPresent
-                          : item.status === 'absent'
-                          ? styles.statusTextAbsent
-                          : item.status === 'cancelled'
-                          ? styles.statusTextCancelled
-                          : styles.statusTextUnmarked,
-                      ]}
-                    >
-                      {item.status === 'present'
-                        ? 'Present'
-                        : item.status === 'absent'
-                        ? 'Absent'
-                        : item.status === 'cancelled'
-                        ? 'Holiday'
-                        : 'Unmarked'}
-                    </Text>
-                  </View>
-
-                  <Ionicons name="chevron-forward" size={18} color="#CBD5E1" style={{ marginLeft: 6 }} />
-                </View>
-              </Pressable>
-            );
-          }}
+          renderItem={renderItem}
         />
 
         <Modal
@@ -359,7 +374,7 @@ export function SubjectDetailScreen({ navigation, route }: any) {
           onRequestClose={() => setSelectedRecord(null)}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setSelectedRecord(null)}>
-            <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Pressable style={styles.modalContent} onPress={() => { }}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Update Lecture Status</Text>
                 {selectedRecord && (
@@ -418,7 +433,7 @@ export function SubjectDetailScreen({ navigation, route }: any) {
           onRequestClose={() => setFilterModalVisible(false)}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setFilterModalVisible(false)}>
-            <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Pressable style={styles.modalContent} onPress={() => { }}>
               <Text style={styles.modalTitle}>Filter History</Text>
               <Text style={styles.modalSub}>Show lectures by status</Text>
 
@@ -479,7 +494,7 @@ export function SubjectDetailScreen({ navigation, route }: any) {
           onRequestClose={() => setSettingsModalVisible(false)}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setSettingsModalVisible(false)}>
-            <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Pressable style={styles.modalContent} onPress={() => { }}>
               <Text style={styles.modalTitle}>Subject Options</Text>
               <Text style={styles.modalSub}>{subject.name}</Text>
 
@@ -508,6 +523,20 @@ export function SubjectDetailScreen({ navigation, route }: any) {
           </Pressable>
         </Modal>
       </View>
+
+      <ConfirmModal
+        visible={deleteModalVisible}
+        title="Delete Subject?"
+        message={`This will remove ${subject?.name ?? 'this subject'} from your active subjects. This action can be reversed by restoring database if needed.`}
+        icon="trash"
+        iconColor="#EF4444"
+        iconBg="#FEF2F2"
+        confirmText="Delete Subject"
+        cancelText="Cancel"
+        confirmTone="danger"
+        onConfirm={confirmDeleteSubject}
+        onCancel={() => setDeleteModalVisible(false)}
+      />
     </Screen>
   );
 }
@@ -601,7 +630,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: RNStatusBar.currentHeight ? RNStatusBar.currentHeight + 8 : 12,
+    paddingTop: 12,
     paddingBottom: 12,
     backgroundColor: '#F8FAFC',
   },

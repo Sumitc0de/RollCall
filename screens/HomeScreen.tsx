@@ -76,12 +76,12 @@ export function HomeScreen({ navigation }: any) {
     pct === null
       ? 0
       : Math.max(
-          0,
-          Math.floor(
-            (subjects.reduce((x, a) => x + a.present, 0) / target) * 100 -
-              subjects.reduce((x, a) => x + a.total, 0)
-          )
-        );
+        0,
+        Math.floor(
+          (subjects.reduce((x, a) => x + a.present, 0) / target) * 100 -
+          subjects.reduce((x, a) => x + a.total, 0)
+        )
+      );
 
   const dashboardCards = useMemo<DashboardCard[]>(() => {
     const scheduledSubjectIds = new Set(records.map((record) => record.subject_id));
@@ -122,14 +122,16 @@ export function HomeScreen({ navigation }: any) {
         </View>
 
         <View style={s.summary}>
-          <View style={s.ring}>
-            <Text style={s.percent}>{pct === null ? '—' : `${pct}%`}</Text>
-            <Text style={s.muted}>Overall</Text>
-          </View>
-          <View>
-            <Text style={s.summaryTitle}>Your Attendance</Text>
-            <Text style={s.status}>{pct === null ? 'Start tracking' : pct >= target ? 'Great job! 🎉' : 'Keep going!'}</Text>
-            <Text style={s.muted}>Keep it above {target}%</Text>
+          <View style={s.summaryTopRow}>
+            <View style={s.ring}>
+              <Text style={s.percent}>{pct === null ? '—' : `${pct}%`}</Text>
+              <Text style={s.muted}>Overall</Text>
+            </View>
+            <View style={s.summaryTextCol}>
+              <Text style={s.summaryTitle}>Your Attendance</Text>
+              <Text style={s.status}>{pct === null ? 'Start tracking' : pct >= target ? 'Great job! 🎉' : 'Keep going!'}</Text>
+              <Text style={s.muted}>Keep it above {target}%</Text>
+            </View>
           </View>
 
           <View style={s.alerts}>
@@ -181,7 +183,13 @@ export function HomeScreen({ navigation }: any) {
           <Text style={s.empty}>Add a subject to start tracking attendance.</Text>
         )}
 
-        <Pressable style={s.add} onPress={() => navigation.navigate('Add')}>
+        <Pressable
+          style={s.add}
+          onPress={() => navigation.navigate('Add')}
+          accessibilityRole="button"
+          accessibilityLabel="Add New Subject"
+          accessibilityHint="Navigates to the add subject screen"
+        >
           <Ionicons name="add-circle-outline" size={38} color="#6654F4" />
           <View>
             <Text style={s.addTitle}>Add New Subject</Text>
@@ -214,7 +222,13 @@ function Card({ record, index, mark, open, isScheduledToday }: { record: Lecture
   const isBelowTarget = percent !== null && percent < target;
 
   return (
-    <Pressable style={[s.card, isBelowTarget && s.cardBelowTarget]} onPress={open}>
+    <Pressable
+      style={[s.card, isBelowTarget && s.cardBelowTarget]}
+      onPress={open}
+      accessibilityRole="button"
+      accessibilityLabel={`${record.subject_name}, attendance ${percent ?? 0} percent`}
+      accessibilityHint="Tap to view subject details"
+    >
       <View style={[s.course, { backgroundColor: isBelowTarget ? '#FEF2F2' : index % 2 ? '#E9F8ED' : '#EEEAFF' }]}>
         <Ionicons
           name={isBelowTarget ? 'alert-circle' : index % 2 ? 'server' : 'book'}
@@ -241,8 +255,8 @@ function Card({ record, index, mark, open, isScheduledToday }: { record: Lecture
           {percent === null
             ? '◷  No lectures held yet'
             : isBelowTarget
-            ? `⚠️  Low: ${percent}% (Target ${target}%)`
-            : `✓  Attendance: ${percent}%`}
+              ? `⚠️  Low: ${percent}% (Target ${target}%)`
+              : `✓  Attendance: ${percent}%`}
         </Text>
         <Text style={s.info}>♙  Tap to view details</Text>
       </View>
@@ -257,10 +271,20 @@ function Card({ record, index, mark, open, isScheduledToday }: { record: Lecture
         </View>
       ) : (
         <View style={s.actions}>
-          <Pressable style={s.present} onPress={() => mark(record.id, 'present')}>
+          <Pressable
+            style={s.present}
+            onPress={() => mark(record.id, 'present')}
+            accessibilityRole="button"
+            accessibilityLabel={`Mark present for ${record.subject_name}`}
+          >
             <Text style={s.presentText}>✓ Present</Text>
           </Pressable>
-          <Pressable style={s.absent} onPress={() => mark(record.id, 'absent')}>
+          <Pressable
+            style={s.absent}
+            onPress={() => mark(record.id, 'absent')}
+            accessibilityRole="button"
+            accessibilityLabel={`Mark absent for ${record.subject_name}`}
+          >
             <Text style={s.absentText}>× Absent</Text>
           </Pressable>
         </View>
@@ -276,11 +300,13 @@ const s = StyleSheet.create({
   tag: { fontSize: 14, color: '#77719C', fontFamily: fonts.medium, marginTop: 5 },
   avatar: { width: 62, height: 62, borderRadius: 31 },
   summary: { backgroundColor: '#F4F1FF', borderRadius: 28, padding: 20, gap: 15 },
-  ring: { width: 126, height: 126, borderRadius: 63, borderWidth: 9, borderColor: '#7358FA', borderLeftColor: '#CEC7FF', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
-  percent: { fontSize: 34, color: '#17104A', fontFamily: fonts.strong },
+  summaryTopRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  summaryTextCol: { flex: 1, gap: 4 },
+  ring: { width: 104, height: 104, borderRadius: 52, borderWidth: 8, borderColor: '#7358FA', borderLeftColor: '#CEC7FF', alignItems: 'center', justifyContent: 'center' },
+  percent: { fontSize: 28, color: '#17104A', fontFamily: fonts.strong },
   muted: { fontSize: 13, color: '#77719C', fontFamily: fonts.medium },
-  summaryTitle: { fontSize: 22, color: '#17104A', fontFamily: fonts.strong, position: 'absolute', left: 150, top: -118 },
-  status: { fontSize: 18, color: '#6654F4', fontFamily: fonts.display, position: 'absolute', left: 150, top: -81 },
+  summaryTitle: { fontSize: 20, color: '#17104A', fontFamily: fonts.strong },
+  status: { fontSize: 16, color: '#6654F4', fontFamily: fonts.display },
   alerts: { gap: 10 },
   insight: { borderRadius: 16, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   warn: { backgroundColor: '#FFF2EF', borderColor: '#FFDCD5', borderWidth: 1 },

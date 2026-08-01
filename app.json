@@ -6,24 +6,30 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
+    "scheme": "rollcall",
     "android": {
+      "package": "com.sumit.rollcall",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#F4F0FF",
-        "foregroundImage": "./assets/icon.png"
-      },
-      "predictiveBackGestureEnabled": false
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "ios": {
+      "bundleIdentifier": "com.sumit.rollcall",
+      "buildNumber": "1",
+      "supportsTablet": true
     },
     "plugins": [
       "expo-sqlite",
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "expo-localization"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f7fbd636-33d3-4c35-9db1-f22c581546ab"
+      }
+    }
   }
 }
