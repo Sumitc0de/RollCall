@@ -232,14 +232,14 @@ function Card({ record, index, mark, open, isScheduledToday }: { record: Lecture
       <View style={[s.course, { backgroundColor: isBelowTarget ? '#FEF2F2' : index % 2 ? '#E9F8ED' : '#EEEAFF' }]}>
         <Ionicons
           name={isBelowTarget ? 'alert-circle' : index % 2 ? 'server' : 'book'}
-          size={31}
+          size={26}
           color={isBelowTarget ? '#EF4444' : index % 2 ? '#2CAF5D' : '#6954F7'}
         />
       </View>
 
       <View style={s.copy}>
         <View style={s.titleRow}>
-          <Text style={s.name} numberOfLines={1}>
+          <Text style={s.name} numberOfLines={2}>
             {record.subject_name}
           </Text>
           {percent !== null && (
@@ -318,7 +318,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   heading: { fontSize: 21, color: '#17104A', fontFamily: fonts.strong },
   date: { fontSize: 13, color: '#6654F4', fontFamily: fonts.display },
-  card: { minHeight: 132, backgroundColor: '#fff', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', elevation: 2, shadowColor: '#514990', shadowOpacity: 0.08, shadowRadius: 12 },
+  card: { minHeight: 120, backgroundColor: '#fff', borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center', elevation: 2, shadowColor: '#514990', shadowOpacity: 0.08, shadowRadius: 12 },
   cardBelowTarget: {
     borderWidth: 2,
     borderColor: '#EF4444',
@@ -330,15 +330,15 @@ const s = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingRight: 6,
+    gap: 4,
   },
   percentBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    marginLeft: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 2,
   },
   percentBadgeGood: {
     backgroundColor: '#ECFDF5',
@@ -360,18 +360,18 @@ const s = StyleSheet.create({
     color: '#DC2626',
     fontFamily: fonts.strong,
   },
-  course: { width: 64, height: 88, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1, marginLeft: 14, gap: 7 },
-  name: { fontSize: 18, color: '#17104A', fontFamily: fonts.strong, flex: 1 },
+  course: { width: 50, height: 76, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  copy: { flex: 1, marginLeft: 10, marginRight: 8, gap: 4 },
+  name: { fontSize: 16, lineHeight: 21, color: '#17104A', fontFamily: fonts.strong, flex: 1, flexShrink: 1 },
   info: { fontSize: 12, color: '#837DAC', fontFamily: fonts.medium },
-  actions: { width: 104, gap: 8 },
-  pill: { width: 104, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  notScheduled: { width: 104, minHeight: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F1FA', paddingHorizontal: 6 },
-  notScheduledText: { fontSize: 12, color: '#77719C', fontFamily: fonts.display, textAlign: 'center', lineHeight: 16 },
-  present: { backgroundColor: '#EAF8EF', borderRadius: 14, alignItems: 'center', justifyContent: 'center', height: 44 },
-  absent: { backgroundColor: '#FFF0F0', borderRadius: 14, alignItems: 'center', justifyContent: 'center', height: 44 },
-  presentText: { fontSize: 13, color: '#32AE5A', fontFamily: fonts.display },
-  absentText: { fontSize: 13, color: '#FB5B5F', fontFamily: fonts.display },
+  actions: { width: 92, gap: 6 },
+  pill: { width: 92, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  notScheduled: { width: 92, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F1FA', paddingHorizontal: 4 },
+  notScheduledText: { fontSize: 11, color: '#77719C', fontFamily: fonts.display, textAlign: 'center', lineHeight: 15 },
+  present: { backgroundColor: '#EAF8EF', borderRadius: 14, alignItems: 'center', justifyContent: 'center', height: 42 },
+  absent: { backgroundColor: '#FFF0F0', borderRadius: 14, alignItems: 'center', justifyContent: 'center', height: 42 },
+  presentText: { fontSize: 12, color: '#32AE5A', fontFamily: fonts.display },
+  absentText: { fontSize: 12, color: '#FB5B5F', fontFamily: fonts.display },
   empty: { color: '#77719C', fontFamily: fonts.medium },
   add: { height: 100, borderRadius: 21, borderWidth: 1.5, borderColor: '#CFC6FF', borderStyle: 'dashed', padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 5 },
   addTitle: { fontSize: 18, color: '#6654F4', fontFamily: fonts.strong },

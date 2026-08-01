@@ -17,6 +17,7 @@ function formatSupabaseUrl(rawUrl?: string): string {
 export const supabaseUrl = formatSupabaseUrl(process.env.EXPO_PUBLIC_SUPABASE_URL);
 export const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+
 export const supabase = {
   from(table: string) {
     return {

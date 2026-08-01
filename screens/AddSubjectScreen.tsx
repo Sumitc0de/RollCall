@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parseISO } from 'date-fns';
 import { useAttendance } from '../context/AttendanceContext';
 import { subjectRepository, scheduleRepository } from '../db';
 import { Screen } from '../components/Screen';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { colors, fonts, layout } from '../theme';
 import { useAnalytics } from '../analytics/track';
 
@@ -31,6 +32,11 @@ export function AddSubjectScreen({ navigation, route }: any) {
   const [extraPicker, setExtraPicker] = useState(false);
   const [extraLectures, setExtraLectures] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     if (!subjectId) return;
@@ -55,12 +61,27 @@ export function AddSubjectScreen({ navigation, route }: any) {
 
   const save = async () => {
     const targetNumber = Number(target);
-    if (!name.trim()) return Alert.alert('Add a subject name');
-    if (!Number.isInteger(targetNumber) || targetNumber < 75 || targetNumber > 100)
-      return Alert.alert(
-        'Set a target between 75% and 100%. Most colleges require at least 75%.'
-      );
-    if (!Object.keys(days).length) return Alert.alert('Choose at least one class day.');
+    if (!name.trim()) {
+      return setErrorModal({
+        visible: true,
+        title: 'Subject Name Missing',
+        message: 'Please enter a name for this subject before saving.',
+      });
+    }
+    if (!Number.isInteger(targetNumber) || targetNumber < 75 || targetNumber > 100) {
+      return setErrorModal({
+        visible: true,
+        title: 'Invalid Target',
+        message: 'Set an attendance target between 75% and 100%. Most colleges require at least 75%.',
+      });
+    }
+    if (!Object.keys(days).length) {
+      return setErrorModal({
+        visible: true,
+        title: 'No Days Selected',
+        message: 'Choose at least one weekly class day for this subject.',
+      });
+    }
 
     setSaving(true);
     const payload = Object.entries(days).map(([day, count]) => ({ day: Number(day), count }));
@@ -256,6 +277,18 @@ export function AddSubjectScreen({ navigation, route }: any) {
           </Pressable>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={errorModal.visible}
+        title={errorModal.title}
+        message={errorModal.message}
+        icon="alert-circle-outline"
+        iconColor="#EF4444"
+        iconBg="#FEF2F2"
+        confirmText="Got It"
+        confirmTone="danger"
+        onConfirm={() => setErrorModal((prev) => ({ ...prev, visible: false }))}
+      />
     </Screen>
   );
 }

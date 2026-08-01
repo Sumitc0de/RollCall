@@ -45,22 +45,87 @@ export function ProfileScreen({ navigation }: any) {
     subjectRepository.getSummaries().then(setSubjects);
   }, [refreshKey]);
 
+  const [infoModal, setInfoModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    icon?: keyof typeof Ionicons.glyphMap;
+    iconColor?: string;
+    iconBg?: string;
+    confirmText?: string;
+    confirmTone?: 'danger' | 'primary' | 'success';
+    filePath?: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
+
+  const showAlertModal = (opts: {
+    title: string;
+    message: string;
+    icon?: keyof typeof Ionicons.glyphMap;
+    iconColor?: string;
+    iconBg?: string;
+    confirmText?: string;
+    confirmTone?: 'danger' | 'primary' | 'success';
+    filePath?: string;
+  }) => {
+    setInfoModal({
+      visible: true,
+      title: opts.title,
+      message: opts.message,
+      icon: opts.icon ?? 'checkmark-circle-outline',
+      iconColor: opts.iconColor ?? '#6366F1',
+      iconBg: opts.iconBg ?? '#EEF2FF',
+      confirmText: opts.confirmText ?? 'Got It',
+      confirmTone: opts.confirmTone ?? 'primary',
+      filePath: opts.filePath,
+    });
+  };
+
+  const closeInfoModal = () => {
+    setInfoModal((prev) => ({ ...prev, visible: false }));
+  };
+
   const handleSaveName = async () => {
     if (!inputName.trim()) {
-      Alert.alert('Please enter a valid name');
+      showAlertModal({
+        title: 'Name Required',
+        message: 'Please enter a valid name before saving your profile.',
+        icon: 'alert-circle-outline',
+        iconColor: '#EF4444',
+        iconBg: '#FEF2F2',
+        confirmTone: 'danger',
+        confirmText: 'OK',
+      });
       return;
     }
     await setUserName(inputName.trim());
-    Alert.alert('Success', 'Profile name updated successfully!');
+    showAlertModal({
+      title: 'Profile Updated! ✨',
+      message: 'Your profile name has been updated successfully.',
+      icon: 'checkmark-circle-outline',
+      iconColor: '#22C55E',
+      iconBg: '#DCFCE7',
+      confirmTone: 'success',
+      confirmText: 'Awesome!',
+    });
   };
 
   const handleToggleAutoMark = async (value: boolean) => {
     await setAutoMarkPresent(value);
     if (value) {
-      Alert.alert(
-        'Auto-Mark Enabled 🎉',
-        'Past & today’s unmarked lectures are now marked as Present by default. You only need to manually mark when you are Absent!'
-      );
+      showAlertModal({
+        title: 'Auto-Mark Enabled 🎉',
+        message:
+          'Past & today’s unmarked lectures are now marked as Present by default. You only need to manually mark when you are Absent!',
+        icon: 'sparkles-outline',
+        iconColor: '#6366F1',
+        iconBg: '#EEF2FF',
+        confirmTone: 'primary',
+        confirmText: 'Got It!',
+      });
     }
   };
 
@@ -68,12 +133,26 @@ export function ProfileScreen({ navigation }: any) {
     setExporting(true);
     try {
       const filePath = await exportAllDataToJson();
-      Alert.alert(
-        'Export Successful 📤',
-        `All attendance records, subjects, schedules, and settings have been exported to:\n\n${filePath}`
-      );
+      showAlertModal({
+        title: 'Export Successful 📤',
+        message: 'All your attendance records, subjects, schedules, and settings have been exported.',
+        icon: 'cloud-download-outline',
+        iconColor: '#22C55E',
+        iconBg: '#DCFCE7',
+        confirmTone: 'success',
+        confirmText: 'Done',
+        filePath,
+      });
     } catch (e: any) {
-      Alert.alert('Export Failed', e.message ?? 'Failed to export data.');
+      showAlertModal({
+        title: 'Export Failed',
+        message: e.message ?? 'Failed to export data. Please try again.',
+        icon: 'alert-circle-outline',
+        iconColor: '#EF4444',
+        iconBg: '#FEF2F2',
+        confirmTone: 'danger',
+        confirmText: 'OK',
+      });
     } finally {
       setExporting(false);
     }
@@ -92,9 +171,25 @@ export function ProfileScreen({ navigation }: any) {
       await refresh();
       setSubjects([]);
       setInputName('Sumit');
-      Alert.alert('Data cleared', 'All subjects, schedules, attendance records, and settings have been removed.');
+      showAlertModal({
+        title: 'Data Cleared',
+        message: 'All subjects, schedules, attendance records, and settings have been removed from this device.',
+        icon: 'trash-outline',
+        iconColor: '#6366F1',
+        iconBg: '#EEF2FF',
+        confirmTone: 'primary',
+        confirmText: 'OK',
+      });
     } catch (e: any) {
-      Alert.alert('Could not clear data', e.message ?? 'Please try again.');
+      showAlertModal({
+        title: 'Could Not Clear Data',
+        message: e.message ?? 'Please try again.',
+        icon: 'alert-circle-outline',
+        iconColor: '#EF4444',
+        iconBg: '#FEF2F2',
+        confirmTone: 'danger',
+        confirmText: 'OK',
+      });
     } finally {
       setClearing(false);
     }
@@ -300,6 +395,31 @@ export function ProfileScreen({ navigation }: any) {
         confirmTone="danger"
         onConfirm={() => void clearData()}
         onCancel={() => setClearModalVisible(false)}
+      />
+
+      <ConfirmModal
+        visible={infoModal.visible}
+        title={infoModal.title}
+        message={infoModal.message}
+        icon={infoModal.icon}
+        iconColor={infoModal.iconColor}
+        iconBg={infoModal.iconBg}
+        confirmText={infoModal.confirmText}
+        confirmTone={infoModal.confirmTone}
+        onConfirm={closeInfoModal}
+        extraContent={
+          infoModal.filePath ? (
+            <View style={styles.filePathBox}>
+              <View style={styles.filePathHeader}>
+                <Ionicons name="document-text-outline" size={16} color="#6366F1" />
+                <Text style={styles.filePathTitle}>Backup Destination</Text>
+              </View>
+              <Text style={styles.filePathText} numberOfLines={3}>
+                {infoModal.filePath}
+              </Text>
+            </View>
+          ) : undefined
+        }
       />
     </Screen>
   );
@@ -586,5 +706,29 @@ const styles = StyleSheet.create({
   linkHighlight: {
     fontFamily: fonts.strong,
     color: '#6366F1',
+  },
+  filePathBox: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  filePathHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  filePathTitle: {
+    fontFamily: fonts.strong,
+    fontSize: 12,
+    color: '#4338CA',
+  },
+  filePathText: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: '#3730A3',
+    lineHeight: 16,
   },
 });

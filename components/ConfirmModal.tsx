@@ -11,10 +11,11 @@ export type ConfirmModalProps = {
     iconColor?: string;
     iconBg?: string;
     confirmText?: string;
-    cancelText?: string;
+    cancelText?: string | null;
     confirmTone?: 'danger' | 'primary' | 'success';
+    extraContent?: React.ReactNode;
     onConfirm: () => void;
-    onCancel: () => void;
+    onCancel?: () => void;
 };
 
 export function ConfirmModal({
@@ -25,12 +26,21 @@ export function ConfirmModal({
     iconColor = '#EF4444',
     iconBg = '#FEF2F2',
     confirmText = 'Confirm',
-    cancelText = 'Cancel',
+    cancelText,
     confirmTone = 'danger',
+    extraContent,
     onConfirm,
     onCancel,
 }: ConfirmModalProps) {
     if (!visible) return null;
+
+    const handleDismiss = () => {
+        if (onCancel) {
+            onCancel();
+        } else {
+            onConfirm();
+        }
+    };
 
     const getConfirmStyle = () => {
         switch (confirmTone) {
@@ -45,15 +55,16 @@ export function ConfirmModal({
     };
 
     const toneStyle = getConfirmStyle();
+    const hasCancel = !!cancelText;
 
     return (
         <Modal
             visible={visible}
             transparent
             animationType="fade"
-            onRequestClose={onCancel}
+            onRequestClose={handleDismiss}
         >
-            <Pressable style={styles.overlay} onPress={onCancel}>
+            <Pressable style={styles.overlay} onPress={handleDismiss}>
                 <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
                     <View style={[styles.iconCircle, { backgroundColor: iconBg }]}>
                         <Ionicons name={icon} size={32} color={iconColor} />
@@ -62,21 +73,26 @@ export function ConfirmModal({
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.message}>{message}</Text>
 
+                    {extraContent && <View style={styles.extraWrapper}>{extraContent}</View>}
+
                     <View style={styles.actionRow}>
-                        <Pressable
-                            style={({ pressed }) => [styles.btn, styles.cancelBtn, pressed && styles.pressed]}
-                            onPress={onCancel}
-                            accessibilityRole="button"
-                            accessibilityLabel={cancelText}
-                        >
-                            <Text style={styles.cancelText}>{cancelText}</Text>
-                        </Pressable>
+                        {hasCancel && (
+                            <Pressable
+                                style={({ pressed }) => [styles.btn, styles.cancelBtn, pressed && styles.pressed]}
+                                onPress={handleDismiss}
+                                accessibilityRole="button"
+                                accessibilityLabel={cancelText}
+                            >
+                                <Text style={styles.cancelText}>{cancelText}</Text>
+                            </Pressable>
+                        )}
 
                         <Pressable
                             style={({ pressed }) => [
                                 styles.btn,
                                 { backgroundColor: toneStyle.bg, shadowColor: toneStyle.shadow },
                                 styles.confirmBtn,
+                                !hasCancel && styles.fullWidthBtn,
                                 pressed && styles.pressed,
                             ]}
                             onPress={onConfirm}
@@ -95,7 +111,7 @@ export function ConfirmModal({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 24,
@@ -136,7 +152,11 @@ const styles = StyleSheet.create({
         color: '#64748B',
         textAlign: 'center',
         lineHeight: 21,
-        marginBottom: 24,
+        marginBottom: 20,
+    },
+    extraWrapper: {
+        width: '100%',
+        marginBottom: 20,
     },
     actionRow: {
         flexDirection: 'row',
@@ -165,6 +185,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 4,
+    },
+    fullWidthBtn: {
+        flex: 1,
+        width: '100%',
     },
     confirmText: {
         fontFamily: fonts.strong,

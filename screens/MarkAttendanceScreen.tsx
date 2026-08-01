@@ -174,7 +174,7 @@ export function MarkAttendanceScreen({ navigation }: any) {
             </View>
 
             <View style={styles.subjectWrapper}>
-              <Text style={styles.subjectName} numberOfLines={1}>
+              <Text style={styles.subjectName} numberOfLines={2}>
                 {item.subject_name}
               </Text>
               <Text style={styles.lectureSubtext}>Lecture</Text>
