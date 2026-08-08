@@ -35,7 +35,7 @@ export default function Hero() {
       </div>
 
       {/* Heading */}
-      <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-text-primary leading-tight max-w-5xl tracking-tight">
+      <h1 className="text-2xl min-[380px]:text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-text-primary leading-tight max-w-5xl tracking-tight">
         Rollcall — Student Attendance Tracker &{" "}
         <span className="bg-gradient-to-r from-accent to-purple-400 bg-clip-text text-transparent">
           Attendance Calculator
@@ -43,24 +43,24 @@ export default function Hero() {
       </h1>
 
       {/* Description */}
-      <p className="mt-6 text-lg md:text-xl text-text-secondary max-w-2xl leading-relaxed">
+      <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-text-secondary max-w-2xl leading-relaxed">
         Rollcall helps students effortlessly track lectures, monitor attendance
         percentages, and know exactly how many classes they can skip — all
         offline, right from their phone.
       </p>
 
       {/* CTAs */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
+      <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mt-8 sm:mt-10 w-full sm:w-auto max-w-xs sm:max-w-none">
         <a
           href="/download"
-          className="inline-flex items-center gap-2.5 bg-accent hover:bg-accent-soft text-white text-base font-bold px-8 py-4 rounded-2xl transition-all duration-200 hover:shadow-xl hover:shadow-accent/25 hover:-translate-y-0.5"
+          className="w-full sm:w-auto justify-center inline-flex items-center gap-2.5 bg-accent hover:bg-accent-soft text-white text-sm sm:text-base font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl transition-all duration-200 hover:shadow-xl hover:shadow-accent/25 hover:-translate-y-0.5"
         >
-          <Download size={20} />
+          <Download size={18} className="sm:w-5 sm:h-5" />
           Download Rollcall
         </a>
         <a
           href="#features"
-          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary text-base font-semibold px-6 py-4 rounded-2xl border border-border hover:border-border-subtle transition-all duration-200"
+          className="w-full sm:w-auto justify-center inline-flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm sm:text-base font-semibold px-6 py-3.5 sm:py-4 rounded-2xl border border-border hover:border-border-subtle transition-all duration-200"
         >
           Explore Features
           <ChevronDown size={18} />

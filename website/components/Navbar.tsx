@@ -36,16 +36,23 @@ export default function Navbar() {
   const handleNavClick = () => setMobileOpen(false);
 
   return (
-    <nav
+    <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-bg-primary/80 backdrop-blur-xl border-b border-border shadow-lg shadow-black/10 py-3"
+        scrolled && !mobileOpen
+          ? "bg-[#09090B]/80 backdrop-blur-xl border-b border-border shadow-lg shadow-black/10 py-3"
+          : mobileOpen
+          ? "bg-[#09090B] border-b border-border/50 py-3"
           : "bg-transparent py-5"
       }`}
     >
-      <div className="mx-auto max-w-6xl px-5 flex items-center justify-between">
+      <div className="mx-auto max-w-6xl px-5 flex items-center justify-between relative z-50">
         {/* Logo */}
-        <a href="#" className="flex items-center gap-2.5 group" aria-label="Rollcall Home">
+        <a
+          href="#"
+          onClick={handleNavClick}
+          className="flex items-center gap-2.5 group"
+          aria-label="Rollcall Home"
+        >
           <Image
             src="/logo/icon.png"
             alt="Rollcall Logo"
@@ -83,7 +90,7 @@ export default function Navbar() {
         {/* Mobile Toggle */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden p-2 text-text-secondary hover:text-text-primary transition-colors"
+          className="md:hidden p-2 text-text-secondary hover:text-text-primary transition-colors focus:outline-none"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
         >
@@ -91,21 +98,21 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       <div
-        className={`md:hidden fixed inset-0 top-0 bg-bg-primary/98 backdrop-blur-xl transition-all duration-300 ${
+        className={`md:hidden fixed inset-0 w-screen h-screen bg-[#09090B] transition-all duration-300 z-40 flex flex-col justify-between px-6 pt-24 pb-12 overflow-y-auto ${
           mobileOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+            ? "opacity-100 pointer-events-auto translate-y-0"
+            : "opacity-0 pointer-events-none -translate-y-2"
         }`}
       >
-        <div className="flex flex-col items-center justify-center h-full gap-8">
+        <div className="flex flex-col gap-4 items-center my-auto w-full max-w-sm mx-auto">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
               onClick={handleNavClick}
-              className="text-2xl font-bold text-text-secondary hover:text-text-primary transition-colors duration-200"
+              className="text-xl font-bold text-text-primary hover:text-accent transition-colors duration-200 py-2.5 w-full text-center rounded-xl hover:bg-bg-surface/60"
             >
               {link.label}
             </a>
@@ -113,13 +120,13 @@ export default function Navbar() {
           <a
             href="/download"
             onClick={handleNavClick}
-            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-soft text-white text-lg font-bold px-8 py-3.5 rounded-xl transition-all duration-200 mt-4"
+            className="w-full inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-soft text-white text-base font-bold px-6 py-3.5 rounded-xl transition-all duration-200 shadow-lg shadow-accent/20 mt-4"
           >
             <Download size={20} />
             Download App
           </a>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

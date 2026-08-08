@@ -95,7 +95,7 @@ export default function Features() {
           <span className="inline-block text-xs font-bold text-accent tracking-widest uppercase mb-3">
             Features
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-text-primary tracking-tight">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-text-primary tracking-tight">
             Everything you need to{" "}
             <span className="bg-gradient-to-r from-accent to-purple-400 bg-clip-text text-transparent">
               stay on track

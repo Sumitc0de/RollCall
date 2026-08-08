@@ -92,7 +92,7 @@ export default function FeedbackForm() {
           <span className="inline-block text-xs font-bold text-accent tracking-widest uppercase mb-3">
             Feedback
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-text-primary tracking-tight">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-text-primary tracking-tight">
             We&apos;d love to{" "}
             <span className="bg-gradient-to-r from-accent to-purple-400 bg-clip-text text-transparent">
               hear from you

@@ -40,7 +40,7 @@ export default function DownloadCTA() {
               <Smartphone size={32} className="text-accent" />
             </div>
 
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-text-primary tracking-tight mb-4">
               Ready to take control of{" "}
               <span className="bg-gradient-to-r from-accent to-purple-400 bg-clip-text text-transparent">
                 your attendance?
