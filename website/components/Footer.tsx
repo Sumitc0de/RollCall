@@ -70,7 +70,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="mt-8 pt-6 border-t border-border text-center">
           <p className="text-xs text-text-muted">
-            © {new Date().getFullYear()} Rollcall. All rights reserved. Licensed under MIT.
+            © {new Date().getFullYear()} Rollcall. Developed by sumitc0de
           </p>
         </div>
       </div>
