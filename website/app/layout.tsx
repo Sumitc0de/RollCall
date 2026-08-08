@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   title: "Rollcall — Student Attendance Tracker & Attendance Calculator",
   description:
     "Rollcall is a free offline-first student attendance tracker and attendance percentage calculator. Track lectures, calculate safe skips, and stay on top of college classes.",
+  icons: {
+    icon: "/logo/icon.png",
+    shortcut: "/logo/icon.png",
+    apple: "/logo/icon.png",
+  },
   keywords: [
     "Rollcall",
     "Rollcall app",
@@ -69,9 +74,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  verification: process.env.GOOGLE_SITE_VERIFICATION
-    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
-    : undefined,
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || "p0K0c4tPfxdE1WExZ54l6Q8pabblz8R5GDmdePkDm0U",
+  },
 };
 
 export default function RootLayout({
