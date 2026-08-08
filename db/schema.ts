@@ -1,9 +1,10 @@
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS subjects (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'theory',
   target_percent INTEGER NOT NULL DEFAULT 75,
   semester_start_date TEXT NOT NULL,
   created_at TEXT NOT NULL,

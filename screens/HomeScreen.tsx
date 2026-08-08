@@ -83,6 +83,9 @@ export function HomeScreen({ navigation }: any) {
         )
       );
 
+  const [sortBy, setSortBy] = useState<'default' | 'low_attendance' | 'high_attendance'>('default');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'theory' | 'lab'>('all');
+
   const dashboardCards = useMemo<DashboardCard[]>(() => {
     const scheduledSubjectIds = new Set(records.map((record) => record.subject_id));
     const unscheduledSubjects = subjects
@@ -93,6 +96,7 @@ export function HomeScreen({ navigation }: any) {
           id: subject.id,
           subject_id: subject.id,
           subject_name: subject.name,
+          subject_type: subject.type,
           target_percent: subject.target_percent,
           subject_present: subject.present,
           subject_total: subject.total,
@@ -107,6 +111,37 @@ export function HomeScreen({ navigation }: any) {
       ...unscheduledSubjects,
     ];
   }, [records, subjects]);
+
+  const filteredAndSortedCards = useMemo(() => {
+    let result = [...dashboardCards];
+
+    if (typeFilter !== 'all') {
+      result = result.filter((card) => {
+        const cardType = card.record.subject_type || 'theory';
+        return cardType === typeFilter;
+      });
+    }
+
+    if (sortBy === 'low_attendance') {
+      result.sort((a, b) => {
+        const totalA = a.record.subject_total ?? 0;
+        const pctA = totalA > 0 ? ((a.record.subject_present ?? 0) / totalA) * 100 : -1;
+        const totalB = b.record.subject_total ?? 0;
+        const pctB = totalB > 0 ? ((b.record.subject_present ?? 0) / totalB) * 100 : -1;
+        return pctA - pctB;
+      });
+    } else if (sortBy === 'high_attendance') {
+      result.sort((a, b) => {
+        const totalA = a.record.subject_total ?? 0;
+        const pctA = totalA > 0 ? ((a.record.subject_present ?? 0) / totalA) * 100 : -1;
+        const totalB = b.record.subject_total ?? 0;
+        const pctB = totalB > 0 ? ((b.record.subject_present ?? 0) / totalB) * 100 : -1;
+        return pctB - pctA;
+      });
+    }
+
+    return result;
+  }, [dashboardCards, sortBy, typeFilter]);
 
   return (
     <Screen>
@@ -168,8 +203,73 @@ export function HomeScreen({ navigation }: any) {
           <Text style={s.date}>{format(new Date(), 'dd MMM, EEE')}</Text>
         </View>
 
-        {dashboardCards.length ? (
-          dashboardCards.map(({ record, isScheduledToday }, i) => (
+        <View style={s.filterSortSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipScroll}>
+            <Pressable
+              style={[s.chip, sortBy === 'default' && s.chipActive]}
+              onPress={() => setSortBy('default')}
+              accessibilityRole="button"
+              accessibilityLabel="Sort by scheduled subjects"
+            >
+              <Ionicons name="time-outline" size={13} color={sortBy === 'default' ? '#fff' : '#64748B'} />
+              <Text style={[s.chipText, sortBy === 'default' && s.chipTextActive]}>Scheduled</Text>
+            </Pressable>
+
+            <Pressable
+              style={[s.chip, sortBy === 'low_attendance' && s.chipActiveLow]}
+              onPress={() => setSortBy('low_attendance')}
+              accessibilityRole="button"
+              accessibilityLabel="Sort by low attendance"
+            >
+              <Ionicons name="arrow-down-circle-outline" size={13} color={sortBy === 'low_attendance' ? '#fff' : '#EF4444'} />
+              <Text style={[s.chipText, sortBy === 'low_attendance' && s.chipTextActive]}>Low Attendance</Text>
+            </Pressable>
+
+            <Pressable
+              style={[s.chip, sortBy === 'high_attendance' && s.chipActiveGood]}
+              onPress={() => setSortBy('high_attendance')}
+              accessibilityRole="button"
+              accessibilityLabel="Sort by high attendance"
+            >
+              <Ionicons name="arrow-up-circle-outline" size={13} color={sortBy === 'high_attendance' ? '#fff' : '#10B981'} />
+              <Text style={[s.chipText, sortBy === 'high_attendance' && s.chipTextActive]}>High Attendance</Text>
+            </Pressable>
+
+            <View style={s.chipDivider} />
+
+            <Pressable
+              style={[s.chip, typeFilter === 'all' && s.chipActive]}
+              onPress={() => setTypeFilter('all')}
+              accessibilityRole="button"
+              accessibilityLabel="Filter all subject types"
+            >
+              <Text style={[s.chipText, typeFilter === 'all' && s.chipTextActive]}>All Types</Text>
+            </Pressable>
+
+            <Pressable
+              style={[s.chip, typeFilter === 'theory' && s.chipActive]}
+              onPress={() => setTypeFilter('theory')}
+              accessibilityRole="button"
+              accessibilityLabel="Filter theory subjects"
+            >
+              <Ionicons name="book-outline" size={13} color={typeFilter === 'theory' ? '#fff' : '#64748B'} />
+              <Text style={[s.chipText, typeFilter === 'theory' && s.chipTextActive]}>Theory</Text>
+            </Pressable>
+
+            <Pressable
+              style={[s.chip, typeFilter === 'lab' && s.chipActive]}
+              onPress={() => setTypeFilter('lab')}
+              accessibilityRole="button"
+              accessibilityLabel="Filter lab subjects"
+            >
+              <Ionicons name="flask-outline" size={13} color={typeFilter === 'lab' ? '#fff' : '#64748B'} />
+              <Text style={[s.chipText, typeFilter === 'lab' && s.chipTextActive]}>Labs</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+
+        {filteredAndSortedCards.length ? (
+          filteredAndSortedCards.map(({ record, isScheduledToday }, i) => (
             <Card
               key={`${record.subject_id}-${record.id}`}
               record={record}
@@ -180,7 +280,7 @@ export function HomeScreen({ navigation }: any) {
             />
           ))
         ) : (
-          <Text style={s.empty}>Add a subject to start tracking attendance.</Text>
+          <Text style={s.empty}>No subjects found for selected filter.</Text>
         )}
 
         <Pressable
@@ -220,27 +320,48 @@ function Card({ record, index, mark, open, isScheduledToday }: { record: Lecture
   const target = record.target_percent ?? 75;
   const percent = total > 0 ? Math.round((pCount / total) * 100) : null;
   const isBelowTarget = percent !== null && percent < target;
+  const isLab = record.subject_type === 'lab';
 
   return (
     <Pressable
       style={[s.card, isBelowTarget && s.cardBelowTarget]}
       onPress={open}
       accessibilityRole="button"
-      accessibilityLabel={`${record.subject_name}, attendance ${percent ?? 0} percent`}
+      accessibilityLabel={`${record.subject_name}, ${isLab ? 'Lab' : 'Theory'}, attendance ${percent ?? 0} percent`}
       accessibilityHint="Tap to view subject details"
     >
-      <View style={[s.course, { backgroundColor: isBelowTarget ? '#FEF2F2' : index % 2 ? '#E9F8ED' : '#EEEAFF' }]}>
+      <View style={[s.course, { backgroundColor: isBelowTarget ? '#FEF2F2' : isLab ? '#FEF3C7' : index % 2 ? '#E9F8ED' : '#EEEAFF' }]}>
         <Ionicons
-          name={isBelowTarget ? 'alert-circle' : index % 2 ? 'server' : 'book'}
-          size={26}
-          color={isBelowTarget ? '#EF4444' : index % 2 ? '#2CAF5D' : '#6954F7'}
+          name={isBelowTarget ? 'alert-circle' : isLab ? 'flask' : index % 2 ? 'server' : 'book'}
+          size={24}
+          color={isBelowTarget ? '#EF4444' : isLab ? '#D97706' : index % 2 ? '#2CAF5D' : '#6954F7'}
         />
       </View>
 
       <View style={s.copy}>
-        <View style={s.titleRow}>
+        <View style={s.subjectTitleRow}>
           <Text style={s.name} numberOfLines={2}>
             {record.subject_name}
+          </Text>
+          <View style={[s.typeBadge, isLab ? s.typeBadgeLab : s.typeBadgeTheory]}>
+            <Ionicons
+              name={isLab ? 'flask-outline' : 'book-outline'}
+              size={10}
+              color={isLab ? '#D97706' : '#6366F1'}
+            />
+            <Text style={[s.typeBadgeText, isLab ? s.typeBadgeTextLab : s.typeBadgeTextTheory]}>
+              {isLab ? 'Lab' : 'Theory'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={s.infoRow}>
+          <Text style={[s.info, isBelowTarget && s.infoLow]}>
+            {percent === null
+              ? '◷  No lectures held yet'
+              : isBelowTarget
+                ? `⚠️  Low: ${percent}%`
+                : `✓  Attendance:`}
           </Text>
           {percent !== null && (
             <View style={[s.percentBadge, isBelowTarget ? s.percentBadgeLow : s.percentBadgeGood]}>
@@ -251,14 +372,7 @@ function Card({ record, index, mark, open, isScheduledToday }: { record: Lecture
           )}
         </View>
 
-        <Text style={[s.info, isBelowTarget && s.infoLow]}>
-          {percent === null
-            ? '◷  No lectures held yet'
-            : isBelowTarget
-              ? `⚠️  Low: ${percent}% (Target ${target}%)`
-              : `✓  Attendance: ${percent}%`}
-        </Text>
-        <Text style={s.info}>♙  Tap to view details</Text>
+        <Text style={s.subInfo}>♙  Tap to view details</Text>
       </View>
 
       {!isScheduledToday ? (
@@ -318,7 +432,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   heading: { fontSize: 21, color: '#17104A', fontFamily: fonts.strong },
   date: { fontSize: 13, color: '#6654F4', fontFamily: fonts.display },
-  card: { minHeight: 120, backgroundColor: '#fff', borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center', elevation: 2, shadowColor: '#514990', shadowOpacity: 0.08, shadowRadius: 12 },
+  card: { minHeight: 115, backgroundColor: '#fff', borderRadius: 22, padding: 12, flexDirection: 'row', alignItems: 'center', elevation: 2, shadowColor: '#514990', shadowOpacity: 0.08, shadowRadius: 12 },
   cardBelowTarget: {
     borderWidth: 2,
     borderColor: '#EF4444',
@@ -328,17 +442,16 @@ const s = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
-  titleRow: {
+  infoRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 4,
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
   },
   percentBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginTop: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
   },
   percentBadgeGood: {
     backgroundColor: '#ECFDF5',
@@ -348,7 +461,7 @@ const s = StyleSheet.create({
   },
   percentBadgeText: {
     fontFamily: fonts.strong,
-    fontSize: 12,
+    fontSize: 11,
   },
   percentTextGood: {
     color: '#16A34A',
@@ -360,14 +473,15 @@ const s = StyleSheet.create({
     color: '#DC2626',
     fontFamily: fonts.strong,
   },
-  course: { width: 50, height: 76, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1, marginLeft: 10, marginRight: 8, gap: 4 },
-  name: { fontSize: 16, lineHeight: 21, color: '#17104A', fontFamily: fonts.strong, flex: 1, flexShrink: 1 },
+  course: { width: 44, height: 72, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  copy: { flex: 1, marginLeft: 10, marginRight: 6, gap: 2 },
+  name: { fontSize: 16, lineHeight: 21, color: '#17104A', fontFamily: fonts.strong },
   info: { fontSize: 12, color: '#837DAC', fontFamily: fonts.medium },
-  actions: { width: 92, gap: 6 },
-  pill: { width: 92, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  notScheduled: { width: 92, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F1FA', paddingHorizontal: 4 },
-  notScheduledText: { fontSize: 11, color: '#77719C', fontFamily: fonts.display, textAlign: 'center', lineHeight: 15 },
+  subInfo: { fontSize: 11, color: '#A099C8', fontFamily: fonts.medium, marginTop: 1 },
+  actions: { width: 86, gap: 6 },
+  pill: { width: 86, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  notScheduled: { width: 86, minHeight: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F1FA', paddingHorizontal: 3 },
+  notScheduledText: { fontSize: 11, color: '#77719C', fontFamily: fonts.display, textAlign: 'center', lineHeight: 14 },
   present: { backgroundColor: '#EAF8EF', borderRadius: 14, alignItems: 'center', justifyContent: 'center', height: 42 },
   absent: { backgroundColor: '#FFF0F0', borderRadius: 14, alignItems: 'center', justifyContent: 'center', height: 42 },
   presentText: { fontSize: 12, color: '#32AE5A', fontFamily: fonts.display },
@@ -375,4 +489,83 @@ const s = StyleSheet.create({
   empty: { color: '#77719C', fontFamily: fonts.medium },
   add: { height: 100, borderRadius: 21, borderWidth: 1.5, borderColor: '#CFC6FF', borderStyle: 'dashed', padding: 18, flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 5 },
   addTitle: { fontSize: 18, color: '#6654F4', fontFamily: fonts.strong },
+  filterSortSection: {
+    marginVertical: 4,
+    marginHorizontal: -4,
+  },
+  chipScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F1F0FB',
+    borderWidth: 1,
+    borderColor: '#E2DFFA',
+  },
+  chipActive: {
+    backgroundColor: '#6654F4',
+    borderColor: '#6654F4',
+  },
+  chipActiveLow: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  chipActiveGood: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  chipText: {
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    color: '#524B7D',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+    fontFamily: fonts.strong,
+  },
+  chipDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: '#DCD6FD',
+    marginHorizontal: 2,
+  },
+  subjectTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  typeBadgeTheory: {
+    backgroundColor: '#EEF2FF',
+  },
+  typeBadgeLab: {
+    backgroundColor: '#FEF3C7',
+  },
+  typeBadgeTextTheory: {
+    color: '#4F46E5',
+    fontSize: 10,
+    fontFamily: fonts.strong,
+  },
+  typeBadgeTextLab: {
+    color: '#D97706',
+    fontSize: 10,
+    fontFamily: fonts.strong,
+  },
 });

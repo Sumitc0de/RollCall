@@ -120,9 +120,21 @@ export function SubjectDetailScreen({ navigation, route }: any) {
               <Ionicons name="book-outline" size={24} color="#6366F1" />
             </View>
             <View style={styles.titleContainer}>
-              <Text style={styles.subjectName} numberOfLines={1}>
-                {subject.name}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={styles.subjectName} numberOfLines={2}>
+                  {subject.name}
+                </Text>
+                <View style={[styles.detailTypeBadge, subject.type === 'lab' ? styles.detailTypeBadgeLab : styles.detailTypeBadgeTheory]}>
+                  <Ionicons
+                    name={subject.type === 'lab' ? 'flask-outline' : 'book-outline'}
+                    size={11}
+                    color={subject.type === 'lab' ? '#D97706' : '#6366F1'}
+                  />
+                  <Text style={[styles.detailTypeBadgeText, subject.type === 'lab' ? styles.detailTypeBadgeTextLab : styles.detailTypeBadgeTextTheory]}>
+                    {subject.type === 'lab' ? 'Lab' : 'Theory'}
+                  </Text>
+                </View>
+              </View>
               <Text style={styles.heldLectures}>{attendance.total} Held Lectures</Text>
             </View>
             <View style={styles.targetBadge}>
@@ -1054,5 +1066,29 @@ const styles = StyleSheet.create({
     fontFamily: fonts.strong,
     fontSize: 15,
     color: '#64748B',
+  },
+  detailTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  detailTypeBadgeTheory: {
+    backgroundColor: '#EEF2FF',
+  },
+  detailTypeBadgeLab: {
+    backgroundColor: '#FEF3C7',
+  },
+  detailTypeBadgeTextTheory: {
+    color: '#4F46E5',
+    fontSize: 11,
+    fontFamily: fonts.strong,
+  },
+  detailTypeBadgeTextLab: {
+    color: '#D97706',
+    fontSize: 11,
+    fontFamily: fonts.strong,
   },
 });

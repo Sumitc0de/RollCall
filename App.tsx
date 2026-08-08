@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
@@ -78,6 +79,9 @@ export default function App() {
 }
 
 function AttendanceTrackerApp() {
+  console.log('[RollCall Audit] App Started');
+  console.log('[RollCall Audit] Fonts Started');
+
   const [fontsLoaded, fontError] = useFonts({
     Nunito_400Regular,
     Nunito_600SemiBold,
@@ -86,10 +90,16 @@ function AttendanceTrackerApp() {
   });
   const [started, setStarted] = useState(false);
   const [dbReady, setDbReady] = useState(false);
+  const [fontTimeout, setFontTimeout] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('[RollCall] 🚀 App Mounted. Starting DB initialization...');
+    console.log('[RollCall Audit] Ionicons Loaded');
+
+    // 1-second maximum font loading timeout to prevent hanging on Metro dev server
+    const fontTimer = setTimeout(() => {
+      setFontTimeout(true);
+    }, 1000);
 
     // Non-blocking deferred analytics tracking
     const analyticsTimer = setTimeout(() => {
@@ -100,21 +110,20 @@ function AttendanceTrackerApp() {
 
     (async () => {
       try {
-        console.log('[RollCall] 1/3 Connecting SQLite database...');
+        console.log('[RollCall Audit] SQLite Started');
         const db = await getDb();
-        console.log('[RollCall] 2/3 Running DB migrations...');
+        console.log('[RollCall Audit] Migration Started');
         await runMigrations(db);
-        console.log('[RollCall] 3/3 Checking onboarding status...');
+        console.log('[RollCall Audit] Migration Finished');
 
         const asyncStorageOnboarding = await AsyncStorage.getItem('@rollcall_onboarding_completed');
         const dbOnboarding = await userSettingsRepository.getSetting('onboarding_completed', 'false');
-        console.log('[RollCall] Onboarding status:', { asyncStorageOnboarding, dbOnboarding });
 
         if (asyncStorageOnboarding === 'true' || dbOnboarding === 'true') {
           setStarted(true);
         }
       } catch (err: any) {
-        console.error('[RollCall] ❌ Failed to initialize database:', err);
+        console.error('[RollCall Audit] ❌ Failed to initialize database:', err);
         setInitError(err?.message || String(err));
       } finally {
         setDbReady(true);
@@ -122,6 +131,7 @@ function AttendanceTrackerApp() {
     })();
 
     return () => {
+      clearTimeout(fontTimer);
       clearTimeout(analyticsTimer);
     };
   }, []);
@@ -138,13 +148,17 @@ function AttendanceTrackerApp() {
     );
   }
 
-  if (!fontsLoaded || !dbReady) {
+  const isReady = (fontsLoaded || fontError || fontTimeout) && dbReady;
+
+  if (!isReady) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FBFAFF', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#6650F7" />
       </View>
     );
   }
+
+  console.log('[RollCall Audit] Navigation Mounted');
 
   if (!started)
     return (
@@ -153,6 +167,8 @@ function AttendanceTrackerApp() {
         <OnboardingScreen onGetStarted={() => setStarted(true)} />
       </SafeAreaProvider>
     );
+
+  console.log('[RollCall Audit] Home Screen Rendered');
 
   return (
     <SafeAreaProvider>

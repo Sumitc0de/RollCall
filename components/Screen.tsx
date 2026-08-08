@@ -19,8 +19,8 @@ export function Screen({ children, keyboard = false, style, edges = ['top', 'lef
   return keyboard ? (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       {content}
     </KeyboardAvoidingView>

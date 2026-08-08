@@ -3,12 +3,14 @@ import { Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, Vi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parseISO } from 'date-fns';
+import { Ionicons } from '@expo/vector-icons';
 import { useAttendance } from '../context/AttendanceContext';
 import { subjectRepository, scheduleRepository } from '../db';
 import { Screen } from '../components/Screen';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { colors, fonts, layout } from '../theme';
 import { useAnalytics } from '../analytics/track';
+import type { SubjectType } from '../types';
 
 const WEEKDAYS = [
   { day: 1, short: 'Mon', full: 'Monday' },
@@ -25,6 +27,7 @@ export function AddSubjectScreen({ navigation, route }: any) {
   const { refresh } = useAttendance();
   const { track } = useAnalytics();
   const [name, setName] = useState('');
+  const [type, setType] = useState<SubjectType>('theory');
   const [target, setTarget] = useState('75');
   const [start, setStart] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [days, setDays] = useState<Record<number, number>>({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 });
@@ -45,6 +48,7 @@ export function AddSubjectScreen({ navigation, route }: any) {
       const schedule = await scheduleRepository.getBySubject(subjectId);
       if (subject) {
         setName(subject.name);
+        setType(subject.type ?? 'theory');
         setTarget(String(subject.target_percent));
         setStart(subject.semester_start_date);
         setDays(Object.fromEntries(schedule.map((s) => [s.day_of_week, s.lectures_count])));
@@ -90,13 +94,13 @@ export function AddSubjectScreen({ navigation, route }: any) {
       if (subjectId) {
         await subjectRepository.updateWithSchedule(
           subjectId,
-          { name: name.trim(), target_percent: targetNumber, semester_start_date: start },
+          { name: name.trim(), type, target_percent: targetNumber, semester_start_date: start },
           payload,
           extraLectures
         );
       } else {
         await subjectRepository.createWithSchedule(
-          { name: name.trim(), target_percent: targetNumber, semester_start_date: start },
+          { name: name.trim(), type, target_percent: targetNumber, semester_start_date: start },
           payload,
           extraLectures
         );
@@ -148,6 +152,41 @@ export function AddSubjectScreen({ navigation, route }: any) {
             accessibilityLabel="Subject name"
             accessibilityHint="Enter the name of this subject"
           />
+
+          <Text style={styles.label}>Subject type</Text>
+          <View style={styles.typeSelectorRow}>
+            <Pressable
+              style={[styles.typeOption, type === 'theory' && styles.typeOptionActive]}
+              onPress={() => setType('theory')}
+              accessibilityRole="button"
+              accessibilityLabel="Select Theory subject type"
+            >
+              <Ionicons
+                name="book-outline"
+                size={18}
+                color={type === 'theory' ? '#6650F7' : '#64748B'}
+              />
+              <Text style={[styles.typeOptionText, type === 'theory' && styles.typeOptionTextActive]}>
+                Theory
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.typeOption, type === 'lab' && styles.typeOptionActive]}
+              onPress={() => setType('lab')}
+              accessibilityRole="button"
+              accessibilityLabel="Select Lab subject type"
+            >
+              <Ionicons
+                name="flask-outline"
+                size={18}
+                color={type === 'lab' ? '#6650F7' : '#64748B'}
+              />
+              <Text style={[styles.typeOptionText, type === 'lab' && styles.typeOptionTextActive]}>
+                Lab / Practical
+              </Text>
+            </Pressable>
+          </View>
 
           <Text style={styles.label}>Attendance target</Text>
           <View style={styles.targetWrap}>
@@ -555,5 +594,36 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.6,
+  },
+  typeSelectorRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  typeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  typeOptionActive: {
+    borderColor: '#6650F7',
+    backgroundColor: '#F5F2FF',
+  },
+  typeOptionText: {
+    fontSize: 15,
+    fontFamily: fonts.medium,
+    color: '#64748B',
+  },
+  typeOptionTextActive: {
+    fontFamily: fonts.strong,
+    color: '#17104A',
   },
 });

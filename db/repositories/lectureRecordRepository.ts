@@ -71,6 +71,7 @@ export const lectureRecordRepository = {
       `SELECT 
         l.*, 
         s.name AS subject_name, 
+        s.type AS subject_type,
         s.target_percent,
         COALESCE(SUM(CASE WHEN l2.status = 'present' THEN 1 ELSE 0 END), 0) AS subject_present,
         COALESCE(SUM(CASE WHEN l2.status IN ('present','absent') THEN 1 ELSE 0 END), 0) AS subject_total

@@ -6,6 +6,9 @@ async function ensureRequiredColumns(db: SQLiteDatabase): Promise<void> {
   if (subjectCols.length > 0 && !subjectCols.some((column) => column.name === 'is_deleted')) {
     await db.execAsync('ALTER TABLE subjects ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;');
   }
+  if (subjectCols.length > 0 && !subjectCols.some((column) => column.name === 'type')) {
+    await db.execAsync("ALTER TABLE subjects ADD COLUMN type TEXT NOT NULL DEFAULT 'theory';");
+  }
 
   const recordCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(lecture_records);');
   if (recordCols.length > 0 && !recordCols.some((column) => column.name === 'updated_at')) {
@@ -29,6 +32,9 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
       const subjectCols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(subjects);");
       if (!subjectCols.some((c) => c.name === 'is_deleted')) {
         await db.execAsync("ALTER TABLE subjects ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;");
+      }
+      if (!subjectCols.some((c) => c.name === 'type')) {
+        await db.execAsync("ALTER TABLE subjects ADD COLUMN type TEXT NOT NULL DEFAULT 'theory';");
       }
 
       const recordCols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(lecture_records);");
@@ -63,8 +69,6 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   }
 
   // Version 1 databases were created before subjects.is_deleted was added.
-  // Keep this separate from the legacy (version 0) migration because existing
-  // installs may already report user_version = 1.
   if (currentVersion < 2) {
     const subjectCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(subjects);');
     if (!subjectCols.some((column) => column.name === 'is_deleted')) {
@@ -75,7 +79,6 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
   }
 
   // Version 2 databases may still be missing lecture_records.updated_at.
-  // This also repairs incomplete version-1 migrations without discarding data.
   if (currentVersion < 3) {
     const recordCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(lecture_records);');
     if (!recordCols.some((column) => column.name === 'updated_at')) {
@@ -86,14 +89,18 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await db.execAsync('PRAGMA user_version = 3;');
   }
 
-  // Repair any database whose historical user_version was advanced before all
-  // schema changes finished. Column checks are idempotent and preserve data.
   if (currentVersion < 4) {
     await ensureRequiredColumns(db);
+    await db.execAsync('PRAGMA user_version = 4;');
+  }
+
+  if (currentVersion < 5) {
+    const subjectCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(subjects);');
+    if (!subjectCols.some((column) => column.name === 'type')) {
+      await db.execAsync("ALTER TABLE subjects ADD COLUMN type TEXT NOT NULL DEFAULT 'theory';");
+    }
     await db.execAsync(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION};`);
   }
 
-  // Keep startup safe even for a database whose user_version was edited or
-  // incorrectly recorded by an older app build.
   await ensureRequiredColumns(db);
 }

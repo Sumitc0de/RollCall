@@ -43,6 +43,7 @@ export const subjectRepository = {
     const subject: Subject = {
       id: subjectId,
       name: values.name,
+      type: values.type ?? 'theory',
       target_percent: values.target_percent,
       semester_start_date: values.semester_start_date,
       created_at: createdAt,
@@ -52,8 +53,8 @@ export const subjectRepository = {
     // Multi-step write wrapped in a transaction
     await db.withExclusiveTransactionAsync(async (tx) => {
       await tx.runAsync(
-        'INSERT INTO subjects (id, name, target_percent, semester_start_date, created_at, is_deleted) VALUES (?, ?, ?, ?, ?, 0)',
-        [subject.id, subject.name, subject.target_percent, subject.semester_start_date, subject.created_at]
+        'INSERT INTO subjects (id, name, type, target_percent, semester_start_date, created_at, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)',
+        [subject.id, subject.name, subject.type, subject.target_percent, subject.semester_start_date, subject.created_at]
       );
       for (const item of schedule) {
         await tx.runAsync(
@@ -71,7 +72,7 @@ export const subjectRepository = {
 
   async updateWithSchedule(
     subjectId: string,
-    values: Pick<Subject, 'name' | 'target_percent' | 'semester_start_date'>,
+    values: Pick<Subject, 'name' | 'target_percent' | 'semester_start_date'> & { type?: 'theory' | 'lab' },
     schedule: { day: number; count: number }[],
     extraLectureDates: string[] = []
   ): Promise<void> {
@@ -80,8 +81,8 @@ export const subjectRepository = {
     // Multi-step write wrapped in a transaction
     await db.withExclusiveTransactionAsync(async (tx) => {
       await tx.runAsync(
-        'UPDATE subjects SET name = ?, target_percent = ?, semester_start_date = ? WHERE id = ?',
-        [values.name, values.target_percent, values.semester_start_date, subjectId]
+        'UPDATE subjects SET name = ?, type = ?, target_percent = ?, semester_start_date = ? WHERE id = ?',
+        [values.name, values.type ?? 'theory', values.target_percent, values.semester_start_date, subjectId]
       );
       await tx.runAsync('DELETE FROM subject_schedule WHERE subject_id = ?', [subjectId]);
       for (const item of schedule) {

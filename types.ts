@@ -1,8 +1,11 @@
 export type LectureStatus = 'present' | 'absent' | 'cancelled' | 'unmarked';
 
+export type SubjectType = 'theory' | 'lab';
+
 export interface Subject {
   id: string;
   name: string;
+  type?: SubjectType;
   target_percent: number;
   semester_start_date: string;
   created_at: string;
@@ -29,6 +32,7 @@ export interface LectureRecord {
   created_at: string;
   updated_at?: string;
   subject_name?: string;
+  subject_type?: SubjectType;
   target_percent?: number;
   subject_present?: number;
   subject_total?: number;

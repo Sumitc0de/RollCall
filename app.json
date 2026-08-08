@@ -7,9 +7,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "rollcall",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "package": "com.sumit.rollcall",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
@@ -24,7 +28,8 @@
       "expo-sqlite",
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      "expo-localization"
+      "expo-localization",
+      "expo-asset"
     ],
     "extra": {
       "eas": {
